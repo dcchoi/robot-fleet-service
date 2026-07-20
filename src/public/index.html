@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Robot Fleet</title>
+<style>
+  :root {
+    --ink: #14171a;
+    --paper: #e7e9e2;
+    --paper-2: #dcdfd6;
+    --card: #f4f5f0;
+    --rule: rgba(20, 23, 26, 0.14);
+    --rule-strong: rgba(20, 23, 26, 0.3);
+    --moss: #3f6b34;
+    --moss-bg: #dde8d5;
+    --signal: #a8650f;
+    --signal-bg: #f3e2c4;
+    --stream: #1f7a72;
+    --stream-bg: #d7ece9;
+    --neutral: #5a5f57;
+    --neutral-bg: #e0e1da;
+    --danger: #a1432b;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Consolas, monospace;
+    --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #eceee7;
+      --paper: #14171a;
+      --paper-2: #1b1e22;
+      --card: #1d2024;
+      --rule: rgba(236, 238, 231, 0.14);
+      --rule-strong: rgba(236, 238, 231, 0.3);
+      --moss: #8fbf76;
+      --moss-bg: #24331f;
+      --signal: #e8a33d;
+      --signal-bg: #3a2d15;
+      --stream: #57c2b7;
+      --stream-bg: #163431;
+      --neutral: #9aa097;
+      --neutral-bg: #24272b;
+      --danger: #d06a4c;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  header.bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  h1 {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .conn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--neutral);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); flex: none; }
+  .conn.down .dot { background: var(--danger); }
+  .conn.down { color: var(--danger); }
+
+  .error-banner {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--signal-bg);
+    color: var(--signal);
+    border: 1px solid var(--signal);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+  .error-banner.show { display: block; }
+
+  .fleet { display: flex; flex-direction: column; gap: 12px; }
+
+  .robot {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    padding: 16px 18px;
+  }
+  .robot-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .robot-name {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .robot-id {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--neutral);
+  }
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    line-height: 1.6;
+  }
+  .pill.running { background: var(--moss-bg); color: var(--moss); }
+  .pill.paused { background: var(--signal-bg); color: var(--signal); }
+  .pill.offline { background: var(--neutral-bg); color: var(--neutral); }
+  .pill.home { background: var(--stream-bg); color: var(--stream); }
+
+  .robot-meta {
+    margin-left: auto;
+    display: flex;
+    gap: 18px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--neutral);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .robot-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: var(--font-body);
+    font-size: 13px;
+    background: var(--paper-2);
+    color: var(--ink);
+    border: 1px solid var(--rule-strong);
+    padding: 7px 13px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--rule-strong); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--stream); outline-offset: 1px; }
+  button.link {
+    background: none;
+    border: none;
+    padding: 7px 4px;
+    color: var(--stream);
+    text-decoration: underline;
+  }
+
+  .events {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .events.show { display: block; }
+  .events table { border-collapse: collapse; width: 100%; }
+  .events th, .events td { text-align: left; padding: 4px 10px 4px 0; white-space: nowrap; }
+  .events th { color: var(--neutral); font-weight: 500; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.05em; }
+  .events-empty { color: var(--neutral); }
+
+  .empty-state {
+    font-family: var(--font-mono);
+    color: var(--neutral);
+    padding: 40px 0;
+    text-align: center;
+  }
+
+  .grid-panel {
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    padding: 18px 20px 20px;
+  }
+  .panel-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--neutral);
+    margin: 0 0 14px;
+  }
+  .grid-body {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .grid-figure {
+    flex: 0 0 min(280px, 100%);
+  }
+  .grid-figure svg { width: 100%; height: auto; display: block; }
+  .grid-line { stroke: var(--rule); stroke-width: 1; }
+  .grid-axis { stroke: var(--rule-strong); stroke-width: 1.2; }
+  .grid-bound { fill: none; stroke: var(--rule-strong); stroke-width: 1.5; }
+  .grid-home-ring { fill: none; stroke: var(--signal); stroke-width: 1; stroke-dasharray: 3 3; }
+  .grid-home-dot { fill: var(--signal); }
+  .robot-dot {
+    stroke: var(--card);
+    stroke-width: 1.5;
+    cursor: pointer;
+  }
+  .robot-dot.running { fill: var(--moss); }
+  .robot-dot.paused { fill: var(--signal); }
+  .robot-dot.offline { fill: var(--neutral); }
+  .robot-dot.selected { stroke: var(--stream); stroke-width: 2; }
+
+  .grid-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .legend-row { display: flex; align-items: center; gap: 8px; }
+  .legend-row.muted { color: var(--neutral); font-size: 11.5px; max-width: 20ch; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .legend-dot.running { background: var(--moss); }
+  .legend-dot.paused { background: var(--signal); }
+  .legend-dot.offline { background: var(--neutral); }
+
+  .robot.highlight { border-color: var(--stream); }
+  @media (prefers-reduced-motion: no-preference) {
+    .robot.highlight { animation: highlight-pulse 1.4s ease-out; }
+  }
+  @keyframes highlight-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--stream) 45%, transparent); }
+    100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--stream) 0%, transparent); }
+  }
+
+  footer {
+    margin-top: 28px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--neutral);
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="bar">
+    <h1>Robot Fleet</h1>
+    <div class="conn" id="conn"><span class="dot"></span><span id="conn-label">live</span></div>
+  </header>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="fleet" id="fleet">
+    <div class="empty-state">Loading fleet…</div>
+  </div>
+
+  <section class="grid-panel">
+    <p class="panel-label">Positions</p>
+    <div class="grid-body">
+      <div class="grid-figure" id="grid"></div>
+      <div class="grid-legend">
+        <div class="legend-row"><span class="legend-dot running"></span>Running</div>
+        <div class="legend-row"><span class="legend-dot paused"></span>Paused</div>
+        <div class="legend-row"><span class="legend-dot offline"></span>Offline</div>
+        <div class="legend-row muted">Click a dot to jump to that robot below</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Polling every 2s · commands return immediately and apply asynchronously via Kafka</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var POLL_MS = 2000;
+  var fleetEl = document.getElementById('fleet');
+  var gridEl = document.getElementById('grid');
+  var connEl = document.getElementById('conn');
+  var connLabelEl = document.getElementById('conn-label');
+  var errorEl = document.getElementById('error-banner');
+
+  // mirrors src/fleet/fleet.constants.ts and src/simulator/simulator.constants.ts
+  var GRID_MIN = -25;
+  var GRID_MAX = 25;
+  var ARRIVAL_RADIUS = 2;
+  var GRID_SPAN = GRID_MAX - GRID_MIN;
+  var SVG_SIZE = 280;
+  var SVG_PAD = 14;
+  var SVG_PLOT = SVG_SIZE - SVG_PAD * 2;
+
+  // robotId -> true while its event history panel is expanded
+  var expanded = Object.create(null);
+  // robotId -> action name currently in flight, to disable just that robot's buttons
+  var pending = Object.create(null);
+  // robotId of the dot most recently clicked on the grid, or null
+  var highlightedId = null;
+  var highlightTimer = null;
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.classList.add('show');
+  }
+  function clearError() {
+    errorEl.classList.remove('show');
+  }
+  function setConnected(ok) {
+    connEl.classList.toggle('down', !ok);
+    connLabelEl.textContent = ok ? 'live' : 'reconnecting…';
+  }
+
+  function relativeTime(iso) {
+    var seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    if (seconds < 5) return 'just now';
+    if (seconds < 60) return seconds + 's ago';
+    var minutes = Math.round(seconds / 60);
+    if (minutes < 60) return minutes + 'm ago';
+    var hours = Math.round(minutes / 60);
+    return hours + 'h ago';
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  async function api(path, options) {
+    var response = await fetch(path, options);
+    if (!response.ok) {
+      throw new Error(path + ' -> ' + response.status);
+    }
+    var text = await response.text();
+    return text ? JSON.parse(text) : undefined;
+  }
+
+  function renderEventsTable(events) {
+    if (!events || events.length === 0) {
+      return '<div class="events-empty">No recorded events yet.</div>';
+    }
+    var rows = events
+      .map(function (e) {
+        return (
+          '<tr><td>' + escapeHtml(relativeTime(e.recordedAt)) + '</td>' +
+          '<td>' + escapeHtml(e.status) + '</td>' +
+          '<td>(' + e.coordinates.x + ', ' + e.coordinates.y + ')</td></tr>'
+        );
+      })
+      .join('');
+    return (
+      '<table><thead><tr><th>When</th><th>Status</th><th>Position</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>'
+    );
+  }
+
+  function gridX(x) {
+    return SVG_PAD + ((x - GRID_MIN) / GRID_SPAN) * SVG_PLOT;
+  }
+  function gridY(y) {
+    // flip so +y renders upward, matching the coordinate system in the API
+    return SVG_PAD + ((GRID_MAX - y) / GRID_SPAN) * SVG_PLOT;
+  }
+
+  function renderGrid(robots) {
+    var lines = '';
+    for (var g = GRID_MIN; g <= GRID_MAX; g += 5) {
+      var cls = g === 0 ? 'grid-axis' : 'grid-line';
+      var vx = gridX(g);
+      lines += '<line class="' + cls + '" x1="' + vx + '" y1="' + gridY(GRID_MIN) + '" x2="' + vx + '" y2="' + gridY(GRID_MAX) + '"></line>';
+      var hy = gridY(g);
+      lines += '<line class="' + cls + '" x1="' + gridX(GRID_MIN) + '" y1="' + hy + '" x2="' + gridX(GRID_MAX) + '" y2="' + hy + '"></line>';
+    }
+
+    var originX = gridX(0);
+    var originY = gridY(0);
+    var ringR = (ARRIVAL_RADIUS / GRID_SPAN) * SVG_PLOT;
+
+    var dots = robots
+      .map(function (robot) {
+        var px = gridX(robot.coordinates.x);
+        var py = gridY(robot.coordinates.y);
+        var selected = robot.robotId === highlightedId;
+        return (
+          '<circle class="robot-dot ' + robot.status + (selected ? ' selected' : '') +
+          '" data-id="' + robot.robotId + '" cx="' + px + '" cy="' + py + '" r="' + (selected ? 6.5 : 5) + '">' +
+            '<title>' + escapeHtml(robot.displayName) + ' — ' + robot.status +
+            ' (' + robot.coordinates.x + ', ' + robot.coordinates.y + ')</title>' +
+          '</circle>'
+        );
+      })
+      .join('');
+
+    return (
+      '<svg viewBox="0 0 ' + SVG_SIZE + ' ' + SVG_SIZE + '" role="img" aria-label="Robot positions on the grid">' +
+        '<rect class="grid-bound" x="' + SVG_PAD + '" y="' + SVG_PAD + '" width="' + SVG_PLOT + '" height="' + SVG_PLOT + '"></rect>' +
+        lines +
+        '<circle class="grid-home-ring" cx="' + originX + '" cy="' + originY + '" r="' + ringR + '"></circle>' +
+        '<circle class="grid-home-dot" cx="' + originX + '" cy="' + originY + '" r="3"></circle>' +
+        dots +
+      '</svg>'
+    );
+  }
+
+  function highlightRobot(robotId) {
+    highlightedId = robotId;
+    render(currentRobots);
+    var card = fleetEl.querySelector('.robot[data-id="' + robotId + '"]');
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (card) card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(function () {
+      highlightedId = null;
+      render(currentRobots);
+    }, 1500);
+  }
+
+  function renderRobot(robot) {
+    var busy = pending[robot.robotId];
+    var isOpen = !!expanded[robot.robotId];
+    var disabledAttr = busy ? 'disabled' : '';
+    var isHighlighted = robot.robotId === highlightedId;
+
+    return (
+      '<div class="robot' + (isHighlighted ? ' highlight' : '') + '" data-id="' + robot.robotId + '">' +
+        '<div class="robot-top">' +
+          '<span class="robot-name">' + escapeHtml(robot.displayName) + '</span>' +
+          '<span class="pill ' + robot.status + '">' + robot.status + '</span>' +
+          (robot.returningHome ? '<span class="pill home">returning home</span>' : '') +
+          '<span class="robot-id">' + robot.robotId.slice(0, 8) + '</span>' +
+          '<span class="robot-meta">' +
+            '<span>(' + robot.coordinates.x + ', ' + robot.coordinates.y + ')</span>' +
+            '<span>' + escapeHtml(relativeTime(robot.lastCheckedAt)) + '</span>' +
+          '</span>' +
+        '</div>' +
+        '<div class="robot-actions">' +
+          '<button data-action="pause" ' + disabledAttr + (robot.status !== 'running' ? ' disabled' : '') + '>Pause</button>' +
+          '<button data-action="resume" ' + disabledAttr + (robot.status === 'running' ? ' disabled' : '') + '>' + (robot.status === 'offline' ? 'Redeploy' : 'Resume') + '</button>' +
+          '<button data-action="return-home" ' + disabledAttr + (robot.status === 'offline' ? ' disabled' : '') + '>Return home</button>' +
+          '<button data-action="check-health" ' + disabledAttr + '>Check health</button>' +
+          '<button class="link" data-action="toggle-events">' + (isOpen ? 'Hide history' : 'Show history') + '</button>' +
+        '</div>' +
+        '<div class="events' + (isOpen ? ' show' : '') + '" data-role="events">' +
+          (isOpen ? '<div class="events-empty">Loading…</div>' : '') +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function render(robots) {
+    gridEl.innerHTML = renderGrid(robots);
+
+    if (robots.length === 0) {
+      fleetEl.innerHTML = '<div class="empty-state">No robots seeded yet.</div>';
+      return;
+    }
+    var sorted = robots.slice().sort(function (a, b) {
+      return a.displayName.localeCompare(b.displayName);
+    });
+    fleetEl.innerHTML = sorted.map(renderRobot).join('');
+
+    sorted.forEach(function (robot) {
+      if (expanded[robot.robotId]) {
+        loadEvents(robot.robotId);
+      }
+    });
+  }
+
+  async function loadEvents(robotId) {
+    var panel = fleetEl.querySelector('.robot[data-id="' + robotId + '"] [data-role="events"]');
+    if (!panel) return;
+    try {
+      var events = await api('/robots/' + robotId + '/events');
+      panel = fleetEl.querySelector('.robot[data-id="' + robotId + '"] [data-role="events"]');
+      if (panel) panel.innerHTML = renderEventsTable(events);
+    } catch (err) {
+      if (panel) panel.innerHTML = '<div class="events-empty">Could not load history.</div>';
+    }
+  }
+
+  async function sendCommand(robotId, action) {
+    pending[robotId] = action;
+    render(currentRobots);
+    try {
+      await api('/robots/' + robotId + '/' + action, { method: 'POST' });
+      clearError();
+    } catch (err) {
+      showError('Command failed: ' + err.message);
+    } finally {
+      delete pending[robotId];
+    }
+  }
+
+  fleetEl.addEventListener('click', function (event) {
+    var button = event.target.closest('button[data-action]');
+    if (!button) return;
+    var card = event.target.closest('.robot[data-id]');
+    if (!card) return;
+    var robotId = card.getAttribute('data-id');
+    var action = button.getAttribute('data-action');
+
+    if (action === 'toggle-events') {
+      expanded[robotId] = !expanded[robotId];
+      render(currentRobots);
+      return;
+    }
+    sendCommand(robotId, action);
+  });
+
+  gridEl.addEventListener('click', function (event) {
+    var dot = event.target.closest('.robot-dot');
+    if (!dot) return;
+    highlightRobot(dot.getAttribute('data-id'));
+  });
+
+  var currentRobots = [];
+
+  async function poll() {
+    try {
+      var robots = await api('/robots');
+      currentRobots = robots;
+      setConnected(true);
+      render(robots);
+    } catch (err) {
+      setConnected(false);
+    } finally {
+      setTimeout(poll, POLL_MS);
+    }
+  }
+
+  poll();
+})();
+</script>
+</body>
+</html>
