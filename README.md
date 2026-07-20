@@ -45,7 +45,17 @@ npm run start:prod
 
 On boot the service ensures the Kafka telemetry topic exists, connects to Postgres, and (if the `robots` table is empty) seeds `SIMULATOR_ROBOT_COUNT` robots that begin moving on each simulator tick.
 
-Once it's running, open **http://localhost:3000** for the dashboard, or use the API directly (below).
+Once it's running, open **http://localhost:3000** for the built-in dashboard, or use the API directly (below). For the fuller React dashboard, see [`web/`](web/README.md).
+
+### Stopping / restarting
+
+Stop the service with `Ctrl+C` in its terminal. To stop the backing services too (without deleting data):
+
+```bash
+docker-compose stop
+```
+
+To bring everything back up: `docker-compose up -d`, then `npm run start:dev` again. `docker-compose up -d` is safe to re-run against already-running containers; if it errors with a "container name already in use" conflict from stopped (not removed) containers, use `docker start fleet-postgres fleet-kafka` instead.
 
 ## Configuration
 

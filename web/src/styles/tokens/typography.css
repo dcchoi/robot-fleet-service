@@ -1,0 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+:root{
+--font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+--font-body:var(--font-mono);--font-display:var(--font-mono);
+--text-2xs:11px;--text-xs:12px;--text-sm:13px;--text-base:14px;--text-md:16px;--text-lg:19px;--text-xl:24px;--text-2xl:32px;--text-3xl:44px;
+--leading-tight:1.2;--leading-normal:1.5;--leading-relaxed:1.7;
+--tracking-tight:-0.01em;--tracking-normal:0;--tracking-wide:.04em;--tracking-widest:.12em;
+--weight-regular:400;--weight-medium:500;--weight-bold:700;
+}
+body{font-family:var(--font-body);}
